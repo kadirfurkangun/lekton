@@ -1,0 +1,1 @@
+{\n  "name": "lekton",\n  "version": "1.0.0",\n  "scripts": {\n    "dev": "vite",\n    "build": "vite build",\n    "serve": "vite preview"\n  },\n  "dependencies": {\n    "zustand": "^3.5.10",\n    "@vitejs/plugin-vue": "^3.0.0"\n  }\n}
