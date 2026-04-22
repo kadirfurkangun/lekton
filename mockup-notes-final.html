@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ReaderApp Notes — Final Mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg0: #08080f;
+    --bg1: #0d0d18;
+    --bg2: #13131f;
+    --bg3: #1a1a28;
+    --border-light: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.1);
+    --text1: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --violet: #a78bfa;
+    --violet-dim: rgba(167,139,250,0.12);
+    --violet-glow: rgba(167,139,250,0.25);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.1);
+    --sky: #38bdf8;
+    --emerald: #34d399;
+  }
+  html, body { height: 100%; background: var(--bg0); color: var(--text1); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; height: 100vh; flex-direction: column; }
+
+  /* Top Global Search Bar */
+  .global-search {
+    height: 56px; background: rgba(13,13,24,0.8); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0; position: relative; z-index: 100;
+  }
+
+  .logo { font-weight: 700; font-size: 13px; color: var(--violet); letter-spacing: -.5px; }
+
+  .search-global {
+    flex: 1; max-width: 500px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    transition: all .2s;
+  }
+  .search-global:focus-within {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.1);
+  }
+  .search-global svg { color: var(--text3); flex-shrink: 0; width: 14px; }
+  .search-global input {
+    background: none; border: none; outline: none;
+    color: var(--text1); font-size: 13px; width: 100%;
+    font-family: inherit;
+  }
+  .search-global input::placeholder { color: var(--text3); }
+  .cmd-hint { font-size: 10px; color: var(--text3); margin-left: auto; border: 1px solid var(--border); padding: 3px 6px; border-radius: 4px; font-family: monospace; }
+
+  /* ── MAIN CONTAINER ── */
+  .main-container { display: flex; flex: 1; overflow: hidden; }
+
+  /* ════ COL 1: BOOKS (COLLAPSED/EXPANDED) ════ */
+  #col-books {
+    min-width: 64px; width: 64px;
+    background: var(--bg1);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 12px 8px; gap: 8px;
+    overflow-y: auto; overflow-x: hidden;
+    transition: width .3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  #col-books.expanded {
+    width: 260px;
+    padding: 12px;
+  }
+
+  /* Toggle button */
+  .toggle-sidebar {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; transition: all .2s;
+    color: var(--text2); flex-shrink: 0;
+  }
+  .toggle-sidebar:hover { background: var(--bg3); color: var(--text1); }
+
+  /* Icon-only mode */
+  .book-icon-tight {
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 9px; font-weight: 700;
+    border: 1px solid var(--border); transition: all .2s;
+    flex-shrink: 0;
+  }
+  .book-icon-tight:hover { border-color: var(--border2); }
+  .book-icon-tight.active {
+    border-color: var(--violet);
+    background: var(--violet-dim);
+    box-shadow: 0 0 0 3px var(--violet-glow);
+  }
+
+  /* Expanded mode content */
+  .books-expanded-content {
+    display: none; flex-direction: column; gap: 12px;
+  }
+  #col-books.expanded .books-expanded-content { display: flex; }
+  #col-books.expanded .book-icon-tight { display: none; }
+
+  .books-search-expanded {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px;
+  }
+  .books-search-expanded svg { color: var(--text3); flex-shrink: 0; width: 13px; }
+  .books-search-expanded input {
+    background: none; border: none; outline: none;
+    color: var(--text1); font-size: 12px; width: 100%;
+    font-family: inherit;
+  }
+  .books-search-expanded input::placeholder { color: var(--text3); }
+
+  .books-categories { flex: 1; overflow-y: auto; }
+  .books-categories::-webkit-scrollbar { width: 3px; }
+  .books-categories::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .category-group { margin-bottom: 14px; }
+  .category-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text3);
+    padding: 0 4px; margin-bottom: 6px;
+  }
+
+  .book-item-expanded {
+    padding: 6px 8px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: all .15s;
+    font-size: 11px;
+  }
+  .book-item-expanded:hover { background: rgba(255,255,255,0.04); }
+  .book-item-expanded.active {
+    background: var(--violet-dim);
+    border-left: 2px solid var(--violet);
+    padding-left: 6px;
+  }
+
+  .book-item-icon { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; }
+  .book-item-name { color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ════ COL 2: LIST ════ */
+  #col-list {
+    width: 320px; min-width: 320px;
+    background: var(--bg1);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transition: width .25s;
+  }
+
+  .col2-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .col2-title {
+    font-size: 13px; font-weight: 600; color: var(--text1);
+    display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  }
+  .col2-title .count { font-size: 11px; color: var(--text3); font-weight: 400; }
+
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); cursor: pointer; transition: all .15s;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text1); }
+  .chip.active { border-color: var(--violet); background: var(--violet-dim); color: var(--violet); }
+
+  #list-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  #list-scroll::-webkit-scrollbar { width: 3px; }
+  #list-scroll::-webkit-scrollbar-track { background: transparent; }
+  #list-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .group-header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg1);
+    padding: 6px 16px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text3);
+    border-bottom: 1px solid var(--border-light);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .group-header::before { content: ''; width: 16px; height: 1px; background: var(--text3); opacity: .3; }
+
+  .note-card {
+    padding: 10px 16px; cursor: pointer;
+    border-left: 2px solid transparent;
+    border-bottom: 1px solid var(--border-light);
+    transition: all .15s;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .note-card:hover { background: rgba(255,255,255,0.02); }
+  .note-card.active {
+    background: var(--violet-dim);
+    border-left: 2px solid var(--violet);
+    filter: drop-shadow(0 0 16px var(--violet-glow));
+  }
+
+  .note-type-icon {
+    width: 20px; height: 20px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0; margin-top: 1px;
+  }
+  .nt-quote { background: rgba(251,191,36,.12); color: var(--amber); }
+  .nt-personal { background: rgba(167,139,250,.12); color: var(--violet); }
+  .nt-highlight { background: rgba(52,211,153,.12); color: var(--emerald); }
+
+  .note-card-body { flex: 1; min-width: 0; }
+  .note-card-title {
+    font-size: 12px; font-weight: 500; color: var(--text1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .note-card-preview {
+    font-size: 11px; color: var(--text2);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; line-height: 1.4;
+  }
+  .note-card-meta {
+    display: flex; align-items: center; gap: 6px; margin-top: 4px;
+  }
+  .tag { font-size: 9px; color: var(--violet); opacity: .7; }
+  .note-date { font-size: 9px; color: var(--text3); margin-left: auto; }
+
+  /* ════ COL 3: ZEN EDITOR ════ */
+  #col-editor {
+    flex: 1; display: flex; flex-direction: column;
+    background: var(--bg0); overflow: hidden; min-width: 0;
+  }
+
+  .editor-topbar {
+    height: 44px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 24px; flex-shrink: 0;
+    background: rgba(13,13,24,0.4); backdrop-filter: blur(8px);
+  }
+  .breadcrumb {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text3);
+  }
+  .breadcrumb strong { color: var(--text2); }
+  .breadcrumb-sep { color: var(--text3); opacity: .4; font-size: 10px; }
+
+  .editor-actions {
+    margin-left: auto; display: flex; gap: 8px;
+  }
+  .btn-sm {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text2); cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn-sm:hover { border-color: var(--border2); color: var(--text1); }
+  .btn-sm.primary {
+    border-color: rgba(167,139,250,.3);
+    background: var(--violet-dim);
+    color: var(--violet);
+  }
+  .btn-sm.primary:hover { background: rgba(167,139,250,.2); }
+
+  #editor-content {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 48px 64px; max-width: 840px; margin: 0 auto; width: 100%;
+  }
+  #editor-content::-webkit-scrollbar { width: 4px; }
+  #editor-content::-webkit-scrollbar-track { background: transparent; }
+  #editor-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .editor-note-type-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 600;
+    margin-bottom: 18px;
+  }
+  .badge-quote { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,.15); }
+  .badge-personal { background: var(--violet-dim); color: var(--violet); border: 1px solid rgba(167,139,250,.15); }
+
+  .editor-title {
+    font-size: 28px; font-weight: 700; color: var(--text1);
+    line-height: 1.3; margin-bottom: 12px;
+    outline: none; font-family: inherit;
+  }
+
+  .editor-meta-row { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
+  .meta-chip { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text3); }
+  .meta-chip svg { width: 12px; height: 12px; opacity: .6; }
+
+  .editor-body {
+    font-size: 15px; line-height: 1.8; color: var(--text2);
+    outline: none; min-height: 200px; font-family: inherit;
+  }
+
+  .blockquote-block {
+    border-left: 2px solid var(--amber);
+    padding: 12px 16px; margin: 20px 0;
+    background: rgba(251,191,36,.06);
+    border-radius: 0 6px 6px 0;
+    color: rgba(251,191,36,.8);
+    font-style: italic; font-size: 15px;
+  }
+
+  .backlinks-section { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-light); }
+  .backlinks-title { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+  .backlink-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 20px; margin: 3px;
+    font-size: 10px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); cursor: pointer;
+    transition: all .15s;
+  }
+  .backlink-chip:hover { border-color: var(--violet); color: var(--violet); }
+
+  /* Floating Toolbar */
+  .floating-toolbar {
+    position: fixed; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 8px; z-index: 200;
+    display: flex; gap: 4px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .floating-toolbar.show { opacity: 1; pointer-events: all; }
+
+  .toolbar-btn {
+    width: 28px; height: 28px; border-radius: 4px;
+    background: transparent; border: none; color: var(--text2);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all .15s; font-size: 12px;
+  }
+  .toolbar-btn:hover { background: var(--bg3); color: var(--text1); }
+  .toolbar-btn.active { background: var(--violet-dim); color: var(--violet); }
+
+  /* Empty State */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; color: var(--text3);
+    text-align: center; padding: 48px;
+  }
+  .empty-icon { font-size: 48px; opacity: .3; }
+  .empty-state p { font-size: 13px; max-width: 240px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ════ GLOBAL SEARCH ════ -->
+  <div class="global-search">
+    <div class="logo">📚 Reader</div>
+    <div class="search-global">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input id="global-search" placeholder="Notları ara…" oninput="globalSearch(this.value)" />
+      <span class="cmd-hint">⌘K</span>
+    </div>
+  </div>
+
+  <!-- ════ MAIN CONTAINER ════ -->
+  <div class="main-container">
+
+    <!-- ════ COL 1: BOOKS (SMART) ════ -->
+    <div id="col-books">
+      <!-- Toggle button -->
+      <button class="toggle-sidebar" onclick="toggleSidebar()" title="Menüyü aç/kapat">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <!-- Icon-only mode (compact) -->
+      <div id="books-icons">
+        <div class="book-icon-tight active" style="background: linear-gradient(135deg,#312e81,#4c1d95);" onclick="selectBook(0)" title="Dune">DU</div>
+        <div class="book-icon-tight" style="background: linear-gradient(135deg,#1e3a5f,#0c4a6e);" onclick="selectBook(1)" title="Sapiens">SA</div>
+        <div class="book-icon-tight" style="background: linear-gradient(135deg,#1c3a2e,#065f46);" onclick="selectBook(2)" title="Atomik Alışkanlıklar">AA</div>
+        <div class="book-icon-tight" style="background: linear-gradient(135deg,#3b1c1c,#7f1d1d);" onclick="selectBook(3)" title="Savaş Sanatı">SS</div>
+        <div class="book-icon-tight" style="background: linear-gradient(135deg,#1a1a3e,#2d2b6e);" onclick="selectBook(4)" title="Felsefenin Tesellisi">FT</div>
+      </div>
+
+      <!-- Expanded mode content -->
+      <div class="books-expanded-content">
+        <div class="books-search-expanded">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:13px">
+            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input placeholder="Kitap ara…" oninput="filterBooks(this.value)" />
+        </div>
+
+        <div class="books-categories">
+          <!-- Teknoloji -->
+          <div class="category-group">
+            <div class="category-label">📱 Teknoloji</div>
+            <div class="book-item-expanded" onclick="selectBook(0)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1e3a5f,#0c4a6e);">SA</div>
+              <div class="book-item-name">Sapiens</div>
+            </div>
+            <div class="book-item-expanded" onclick="selectBook(8)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#2a1a3d,#4a2a5a);">KR</div>
+              <div class="book-item-name">Kodlama Rehberi</div>
+            </div>
+          </div>
+
+          <!-- Bilim Kurgu -->
+          <div class="category-group">
+            <div class="category-label">🚀 Bilim Kurgu</div>
+            <div class="book-item-expanded active" onclick="selectBook(0)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#312e81,#4c1d95);">DU</div>
+              <div class="book-item-name">Dune</div>
+            </div>
+            <div class="book-item-expanded" onclick="selectBook(9)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1a3a2a,#2a6a4a);">SF</div>
+              <div class="book-item-name">Sentetik Felsefe</div>
+            </div>
+          </div>
+
+          <!-- Felsefe -->
+          <div class="category-group">
+            <div class="category-label">🤔 Felsefe</div>
+            <div class="book-item-expanded" onclick="selectBook(4)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1a1a3e,#2d2b6e);">FT</div>
+              <div class="book-item-name">Felsefenin Tesellisi</div>
+            </div>
+            <div class="book-item-expanded" onclick="selectBook(10)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#3a1a28,#6b2d3d);">ET</div>
+              <div class="book-item-name">Etik Teorisi</div>
+            </div>
+          </div>
+
+          <!-- Kişisel Gelişim -->
+          <div class="category-group">
+            <div class="category-label">💪 Kişisel Gelişim</div>
+            <div class="book-item-expanded" onclick="selectBook(2)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1c3a2e,#065f46);">AA</div>
+              <div class="book-item-name">Atomik Alışkanlıklar</div>
+            </div>
+            <div class="book-item-expanded" onclick="selectBook(11)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#2d1b4e,#5a2d82);">ÜK</div>
+              <div class="book-item-name">Üretkenlik Kodu</div>
+            </div>
+          </div>
+
+          <!-- Tarih -->
+          <div class="category-group">
+            <div class="category-label">📖 Tarih</div>
+            <div class="book-item-expanded" onclick="selectBook(3)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#3b1c1c,#7f1d1d);">SS</div>
+              <div class="book-item-name">Savaş Sanatı</div>
+            </div>
+            <div class="book-item-expanded" onclick="selectBook(12)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1e3a2e,#2f6a4a);">TT</div>
+              <div class="book-item-name">Türk Tarihi</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ COL 2: LIST ════ -->
+    <div id="col-list">
+      <div class="col2-header">
+        <div class="col2-title">
+          <span id="col2-book-name">📘 Dune</span>
+          <span class="count" id="col2-count">12 not</span>
+        </div>
+
+        <div class="filter-chips">
+          <div class="chip active" onclick="setFilter('all',this)">Tümü</div>
+          <div class="chip" onclick="setFilter('quote',this)">📜 Alıntı</div>
+          <div class="chip" onclick="setFilter('personal',this)">🖊 Kişisel</div>
+          <div class="chip" onclick="setFilter('highlight',this)">✏️ İşaret</div>
+        </div>
+      </div>
+
+      <div id="list-scroll">
+        <div class="group-header">Bugün</div>
+        <div class="note-card active" onclick="selectNote(0)">
+          <div class="note-type-icon nt-personal">🖊</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Güç ve iktidar üzerine düşünceler</div>
+            <div class="note-card-preview">Paul'un içindeki güç istemi aslında babasının gölgesinden kaçma çabası değil mi?</div>
+            <div class="note-card-meta"><span class="tag">#güç</span><span class="tag">#karakter</span><span class="note-date">14:32</span></div>
+          </div>
+        </div>
+
+        <div class="note-card" onclick="selectNote(1)">
+          <div class="note-type-icon nt-quote">📜</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Herbert — Korku yok edicidir</div>
+            <div class="note-card-preview">"Korku, aklı öldüren küçük ölümdür. Korku, her şeyi silip geçen tam bir yok oluştur."</div>
+            <div class="note-card-meta"><span class="tag">#korku</span><span class="note-date">11:05</span></div>
+          </div>
+        </div>
+
+        <div class="group-header">Bu Hafta</div>
+        <div class="note-card" onclick="selectNote(2)">
+          <div class="note-type-icon nt-highlight">✏️</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Çöl ekosistemi ve Fremen yaşamı</div>
+            <div class="note-card-preview">Arrakis'in su döngüsü, Fremen kültürünün neden bu kadar sıkı kurallara dayandığını açıklıyor.</div>
+            <div class="note-card-meta"><span class="tag">#dünya</span><span class="note-date">Çar</span></div>
+          </div>
+        </div>
+
+        <div class="note-card" onclick="selectNote(3)">
+          <div class="note-type-icon nt-quote">📜</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Alıntı — İktidar ve öngörü</div>
+            <div class="note-card-preview">"Gelecek zaman yoktur; yalnızca şimdinin bir geleceğe işaret etme biçimi vardır."</div>
+            <div class="note-card-meta"><span class="tag">#zaman</span><span class="note-date">Sal</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ COL 3: ZEN EDITOR ════ -->
+    <div id="col-editor">
+      <div class="editor-topbar">
+        <div class="breadcrumb">
+          <span>📘 Dune</span>
+          <span class="breadcrumb-sep">›</span>
+          <strong>Güç ve iktidar üzerine düşünceler</strong>
+        </div>
+        <div class="editor-actions">
+          <button class="btn-sm">🔗 Bağla</button>
+          <button class="btn-sm">🏷 Etiket</button>
+        </div>
+      </div>
+
+      <div id="editor-content">
+        <div class="editor-note-type-badge badge-personal">🖊 Kişisel Not</div>
+        <div class="editor-title" contenteditable="true" onmouseup="showFloatingToolbar()">Güç ve iktidar üzerine düşünceler</div>
+        <div class="editor-meta-row">
+          <span class="meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>22 Nisan 2026, 14:32</span>
+          <span class="meta-chip">📘 Dune · Sf. 184</span>
+          <span class="meta-chip" style="color:var(--violet)">#güç &nbsp; #karakter &nbsp; #paul</span>
+        </div>
+
+        <div class="editor-body" contenteditable="true" onmouseup="showFloatingToolbar()">
+          <p>Paul'un içindeki güç istemi aslında babasının gölgesinden kaçma çabası değil mi? Duke Leto'nun gölgesi altında büyüyen bir çocuğun, sistematik iktidar yapılarını hem reddedip hem de yeniden kurması ilginç bir paradoks.</p>
+          <br>
+          <div class="blockquote-block">"Siyasi iktidar, onu elinde tutanı da hapseder." — F. Herbert</div>
+          <br>
+          <p>Bu düşünce Machiavelli'nin <span style="background: rgba(167,139,250,.2); border-radius: 3px; padding: 1px 3px;">Prens</span>'indeki iktidar etiğiyle örtüşüyor. Güç, onu kullananı da şekillendirir; Paul'un mesih kimliğine bürünmesi bunu mükemmel örnekliyor.</p>
+        </div>
+
+        <div class="backlinks-section">
+          <div class="backlinks-title">↩ Geri Bağlantılar</div>
+          <span class="backlink-chip">📘 Mesih mitosu analizi</span>
+          <span class="backlink-chip">📘 Ekoloji ve siyaset paraleli</span>
+          <span class="backlink-chip">📚 Nietzsche — Güç İstenci notları</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Floating Toolbar -->
+<div class="floating-toolbar" id="floating-toolbar">
+  <button class="toolbar-btn" title="Kalın" onclick="formatText('bold')"><strong>B</strong></button>
+  <button class="toolbar-btn" title="İtalik" onclick="formatText('italic')"><em>I</em></button>
+  <button class="toolbar-btn" title="Alıntı" onclick="wrapInQuote()">❝ ❞</button>
+  <button class="toolbar-btn" title="Link ekle" onclick="insertLink()">🔗</button>
+</div>
+
+<script>
+let isSidebarExpanded = false;
+
+function toggleSidebar() {
+  const col = document.getElementById('col-books');
+  isSidebarExpanded = !isSidebarExpanded;
+  col.classList.toggle('expanded');
+}
+
+function selectBook(idx) {
+  document.querySelectorAll('.book-icon-tight.active, .book-item-expanded.active').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.book-icon-tight')[idx] && document.querySelectorAll('.book-icon-tight')[idx].classList.add('active');
+  document.querySelectorAll('.book-item-expanded')[idx] && document.querySelectorAll('.book-item-expanded')[idx].classList.add('active');
+}
+
+function selectNote(idx) {
+  document.querySelectorAll('.note-card').forEach((el, i) => el.classList.toggle('active', i === idx));
+}
+
+function setFilter(type, el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function globalSearch(q) {
+  console.log('Global arama:', q);
+}
+
+function filterBooks(q) {
+  const search = q.toLowerCase();
+  document.querySelectorAll('.book-item-expanded').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = text.includes(search) ? '' : 'none';
+  });
+}
+
+function showFloatingToolbar() {
+  const selection = window.getSelection();
+  const toolbar = document.getElementById('floating-toolbar');
+
+  if (selection.toString().length > 0) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    toolbar.classList.add('show');
+    toolbar.style.left = (rect.left + rect.width / 2 - 80) + 'px';
+    toolbar.style.top = (rect.top - 50) + 'px';
+  } else {
+    toolbar.classList.remove('show');
+  }
+}
+
+function formatText(cmd) {
+  document.execCommand(cmd, false, null);
+}
+
+function wrapInQuote() {
+  document.execCommand('formatBlock', false, 'blockquote');
+}
+
+function insertLink() {
+  const url = prompt('URL gir:');
+  if (url) document.execCommand('createLink', false, url);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.floating-toolbar')) {
+    document.getElementById('floating-toolbar').classList.remove('show');
+  }
+});
+
+// Keyboard shortcut: Cmd+K for global search
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('global-search').focus();
+  }
+});
+
+selectBook(0);
+selectNote(0);
+</script>
+</body>
+</html>

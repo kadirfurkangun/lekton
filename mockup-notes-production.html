@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ReaderApp Notes — Production Ready</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg0: #08080f;
+    --bg1: #0d0d18;
+    --bg2: #13131f;
+    --bg3: #1a1a28;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.1);
+    --text1: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --violet: #a78bfa;
+    --violet-dim: rgba(167,139,250,0.15);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.12);
+    --sky: #38bdf8;
+    --emerald: #34d399;
+    --rose: #fb7185;
+  }
+  html, body { height: 100%; background: var(--bg0); color: var(--text1); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* ── LAYOUT ─────────────────────────────────── */
+  #app { display: flex; height: 100vh; flex-direction: column; }
+
+  /* ════ TOP SEARCH BAR ════ */
+  .top-bar {
+    height: 56px; background: rgba(13,13,24,0.8); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 20px;
+    flex-shrink: 0; position: relative; z-index: 100;
+  }
+
+  .logo { font-weight: 700; font-size: 13px; color: var(--violet); letter-spacing: -.5px; }
+
+  .search-global {
+    flex: 1; max-width: 600px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    transition: all .2s;
+  }
+  .search-global:focus-within {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.1);
+  }
+  .search-global svg { color: var(--text3); flex-shrink: 0; width: 14px; }
+  .search-global input {
+    background: none; border: none; outline: none;
+    color: var(--text1); font-size: 13px; width: 100%;
+    font-family: inherit;
+  }
+  .search-global input::placeholder { color: var(--text3); }
+  .cmd-hint { font-size: 10px; color: var(--text3); margin-left: auto; border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; font-family: monospace; }
+
+  .autosave-status {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3);
+    margin-left: 20px; animation: fadeIn .3s;
+  }
+  .autosave-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--emerald);
+    animation: pulse 2s infinite;
+  }
+  .autosave-dot.saving { background: var(--amber); }
+  @keyframes pulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── MAIN CONTAINER ── */
+  .main-container { display: flex; flex: 1; overflow: hidden; gap: 0; }
+
+  /* ════ COL 1: BOOKS ════ */
+  #col-books {
+    width: 260px; min-width: 260px;
+    background: var(--bg1);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 0; gap: 0;
+    overflow: hidden;
+  }
+
+  .books-recently {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .recently-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; padding: 0 6px; }
+  .recently-icons { display: flex; gap: 4px; flex-wrap: wrap; }
+  .recent-book {
+    width: 44px; height: 44px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 9px; font-weight: 700;
+    border: 2px solid transparent; transition: all .18s;
+    flex-shrink: 0;
+  }
+  .recent-book:hover { border-color: var(--border2); }
+  .recent-book.active { border-color: var(--violet); box-shadow: 0 0 12px rgba(167,139,250,.35); }
+
+  .books-search-bar {
+    margin: 10px; padding: 6px 10px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; transition: border-color .15s;
+    flex-shrink: 0;
+  }
+  .books-search-bar:focus-within { border-color: var(--violet); }
+  .books-search-bar svg { color: var(--text3); flex-shrink: 0; width: 13px; }
+  .books-search-bar input {
+    background: none; border: none; outline: none;
+    color: var(--text1); font-size: 12px; width: 100%;
+    font-family: inherit;
+  }
+  .books-search-bar input::placeholder { color: var(--text3); }
+
+  #books-list {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+  }
+  #books-list::-webkit-scrollbar { width: 3px; }
+  #books-list::-webkit-scrollbar-track { background: transparent; }
+  #books-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .books-category {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .books-category-header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background .12s;
+    background: var(--bg2);
+  }
+  .books-category-header:hover { background: rgba(255,255,255,0.03); }
+
+  .category-toggle { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 9px; flex-shrink: 0; transition: transform .2s; }
+  .category-toggle.closed { transform: rotate(-90deg); }
+
+  .category-title { font-size: 12px; font-weight: 600; color: var(--text1); flex: 1; }
+  .category-count { font-size: 10px; color: var(--text3); }
+
+  .books-in-category {
+    padding: 4px 0; max-height: 500px; overflow: hidden;
+    transition: max-height .25s ease, opacity .15s;
+    opacity: 1;
+  }
+  .books-in-category.collapsed { max-height: 0; opacity: 0; }
+
+  .book-item {
+    padding: 6px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: background .12s;
+    font-size: 12px;
+  }
+  .book-item:hover { background: rgba(255,255,255,0.03); }
+  .book-item.active { background: var(--violet-dim); border-left: 2px solid var(--violet); padding-left: 12px; }
+
+  .book-item-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .book-item-info { flex: 1; min-width: 0; }
+  .book-item-name { color: var(--text1); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-item-notes { font-size: 10px; color: var(--text3); }
+
+  /* ════ COL 2: LIST (RESIZABLE) ════ */
+  #col-list {
+    width: 300px; min-width: 280px; max-width: 400px;
+    background: var(--bg1);
+    display: flex; flex-direction: column;
+    position: relative;
+    transition: width .3s ease;
+  }
+
+  .col-list-resizer {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 4px; cursor: col-resize;
+    background: transparent; transition: background .2s;
+    z-index: 50;
+  }
+  .col-list-resizer:hover { background: var(--violet); }
+  .col-list-resizer.dragging { background: var(--violet); }
+
+  .col2-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .col2-title { font-size: 13px; font-weight: 600; color: var(--text1); display: flex; align-items: center; gap: 6px; }
+  .col2-title span.count { font-size: 11px; color: var(--text3); font-weight: 400; }
+
+  .search-bar {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px;
+    transition: border-color .15s;
+  }
+  .search-bar:focus-within { border-color: var(--violet); }
+  .search-bar svg { color: var(--text3); flex-shrink: 0; }
+  .search-bar input {
+    background: none; border: none; outline: none;
+    color: var(--text1); font-size: 13px; width: 100%;
+    font-family: inherit;
+  }
+  .search-bar input::placeholder { color: var(--text3); }
+
+  .filter-chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .chip {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); cursor: pointer; transition: all .15s;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text1); }
+  .chip.active { border-color: var(--violet); background: var(--violet-dim); color: var(--violet); }
+
+  #list-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; border-right: 1px solid var(--border); }
+  #list-scroll::-webkit-scrollbar { width: 3px; }
+  #list-scroll::-webkit-scrollbar-track { background: transparent; }
+  #list-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .group-header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg1);
+    padding: 8px 16px 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .group-header::before { content: ''; width: 20px; height: 1px; background: var(--text3); opacity: .4; }
+
+  .note-card {
+    padding: 10px 16px; cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background .12s;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .note-card:hover { background: rgba(255,255,255,0.03); }
+  .note-card.active {
+    background: var(--violet-dim);
+    border-left: 2px solid var(--violet);
+    padding-left: 14px;
+  }
+
+  .note-type-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0; margin-top: 1px;
+  }
+  .nt-quote { background: rgba(251,191,36,.15); color: var(--amber); }
+  .nt-personal { background: rgba(167,139,250,.15); color: var(--violet); }
+  .nt-highlight { background: rgba(52,211,153,.12); color: var(--emerald); }
+
+  .note-card-body { flex: 1; min-width: 0; }
+  .note-card-title {
+    font-size: 12px; font-weight: 500; color: var(--text1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .note-card-preview {
+    font-size: 11px; color: var(--text2);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; line-height: 1.4;
+  }
+  .note-card-meta {
+    display: flex; align-items: center; gap: 6px; margin-top: 4px;
+  }
+  .tag { font-size: 10px; color: var(--violet); opacity: .8; }
+  .note-date { font-size: 10px; color: var(--text3); margin-left: auto; }
+
+  .note-card.is-quote { border-left: 3px solid var(--amber); }
+  .note-card.is-quote .note-card-preview { color: rgba(251,191,36,.7); font-style: italic; }
+
+  /* ════ COL 3: EDITOR ════ */
+  #col-editor {
+    flex: 1; display: flex; flex-direction: column;
+    background: var(--bg0); overflow: hidden;
+    min-width: 0;
+  }
+
+  .editor-topbar {
+    height: 48px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 20px; flex-shrink: 0;
+    background: rgba(13,13,24,.8); backdrop-filter: blur(12px);
+  }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); }
+  .breadcrumb strong { color: var(--text2); }
+  .breadcrumb-sep { color: var(--text3); opacity: .5; }
+
+  .editor-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn-sm {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn-sm:hover { border-color: var(--border2); color: var(--text1); }
+  .btn-sm.primary { border-color: rgba(167,139,250,.3); background: var(--violet-dim); color: var(--violet); }
+  .btn-sm.primary:hover { background: rgba(167,139,250,.22); }
+
+  #editor-content {
+    flex: 1; overflow-y: auto; padding: 40px 60px;
+    max-width: 780px; margin: 0 auto; width: 100%;
+  }
+  #editor-content::-webkit-scrollbar { width: 4px; }
+  #editor-content::-webkit-scrollbar-track { background: transparent; }
+  #editor-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .editor-note-type-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    margin-bottom: 18px;
+  }
+  .badge-quote { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,.2); }
+  .badge-personal { background: var(--violet-dim); color: var(--violet); border: 1px solid rgba(167,139,250,.2); }
+
+  .editor-title {
+    font-size: 26px; font-weight: 700; color: var(--text1);
+    line-height: 1.3; margin-bottom: 12px;
+    outline: none;
+  }
+
+  .editor-meta-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .meta-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+  .meta-chip svg { width: 12px; height: 12px; }
+
+  .editor-body {
+    font-size: 15px; line-height: 1.8; color: var(--text2);
+    outline: none; min-height: 200px;
+  }
+
+  .blockquote-block {
+    border-left: 3px solid var(--amber);
+    padding: 10px 18px; margin: 18px 0;
+    background: rgba(251,191,36,.05);
+    border-radius: 0 8px 8px 0;
+    color: rgba(251,191,36,.85);
+    font-style: italic; font-size: 15px;
+  }
+
+  .backlinks-section { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .backlinks-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+  .backlink-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 20px; margin: 3px;
+    font-size: 11px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); cursor: pointer;
+    transition: all .15s;
+  }
+  .backlink-chip:hover { border-color: var(--violet); color: var(--violet); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ════ TOP BAR WITH GLOBAL SEARCH ════ -->
+  <div class="top-bar">
+    <div class="logo">📚 Reader</div>
+    <div class="search-global">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input id="global-search" placeholder="Notları ara…" oninput="globalSearch(this.value)" />
+      <span class="cmd-hint">⌘K</span>
+    </div>
+    <div class="autosave-status">
+      <div class="autosave-dot"></div>
+      <span id="autosave-text">Kaydedildi</span>
+    </div>
+  </div>
+
+  <!-- ════ MAIN CONTAINER ════ -->
+  <div class="main-container">
+
+    <!-- ════ COL 1: BOOKS ════ -->
+    <div id="col-books">
+      <div class="books-recently">
+        <div class="recently-label">Son Okunan</div>
+        <div class="recently-icons">
+          <div class="recent-book active" style="background: linear-gradient(135deg,#312e81,#4c1d95);" onclick="selectBook(0)" title="Dune">DU</div>
+          <div class="recent-book" style="background: linear-gradient(135deg,#1e3a5f,#0c4a6e);" onclick="selectBook(1)" title="Sapiens">SA</div>
+          <div class="recent-book" style="background: linear-gradient(135deg,#1c3a2e,#065f46);" onclick="selectBook(2)" title="Atomik Alışkanlıklar">AA</div>
+          <div class="recent-book" style="background: linear-gradient(135deg,#3b1c1c,#7f1d1d);" onclick="selectBook(3)" title="Savaş Sanatı">SS</div>
+          <div class="recent-book" style="background: linear-gradient(135deg,#1a1a3e,#2d2b6e);" onclick="selectBook(4)" title="Felsefenin Tesellisi">FT</div>
+        </div>
+      </div>
+
+      <div class="books-search-bar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:13px">
+          <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input placeholder="Kitap ara…" oninput="filterBooks(this.value)" />
+      </div>
+
+      <div id="books-list">
+        <div class="books-category">
+          <div class="books-category-header" onclick="toggleCategory(0, this)">
+            <div class="category-toggle open">▼</div>
+            <div class="category-title">Okunu</div>
+            <div class="category-count">3</div>
+          </div>
+          <div class="books-in-category" id="cat-0">
+            <div class="book-item active" onclick="selectBook(0)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#312e81,#4c1d95);">DU</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Dune</div>
+                <div class="book-item-notes">12 not</div>
+              </div>
+            </div>
+            <div class="book-item" onclick="selectBook(1)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1e3a5f,#0c4a6e);">SA</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Sapiens</div>
+                <div class="book-item-notes">8 not</div>
+              </div>
+            </div>
+            <div class="book-item" onclick="selectBook(2)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1c3a2e,#065f46);">AA</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Atomik Alışkanlıklar</div>
+                <div class="book-item-notes">5 not</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="books-category">
+          <div class="books-category-header" onclick="toggleCategory(1, this)">
+            <div class="category-toggle open">▼</div>
+            <div class="category-title">Okunan</div>
+            <div class="category-count">5</div>
+          </div>
+          <div class="books-in-category" id="cat-1">
+            <div class="book-item" onclick="selectBook(3)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#3b1c1c,#7f1d1d);">SS</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Savaş Sanatı</div>
+                <div class="book-item-notes">2 not</div>
+              </div>
+            </div>
+            <div class="book-item" onclick="selectBook(4)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#1a1a3e,#2d2b6e);">FT</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Felsefenin Tesellisi</div>
+                <div class="book-item-notes">3 not</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="books-category">
+          <div class="books-category-header" onclick="toggleCategory(2, this)">
+            <div class="category-toggle open">▼</div>
+            <div class="category-title">⭐ Favori</div>
+            <div class="category-count">2</div>
+          </div>
+          <div class="books-in-category" id="cat-2">
+            <div class="book-item" onclick="selectBook(5)">
+              <div class="book-item-icon" style="background: linear-gradient(135deg,#2a1a3d,#4a2a5a);">KR</div>
+              <div class="book-item-info">
+                <div class="book-item-name">Kodlama Rehberi</div>
+                <div class="book-item-notes">7 not</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ COL 2: LIST (RESIZABLE) ════ -->
+    <div id="col-list">
+      <div class="col-list-resizer" id="resizer" onmousedown="startResize(event)"></div>
+
+      <div class="col2-header">
+        <div class="col2-title">
+          <span id="col2-book-name">📘 Dune</span>
+          <span class="count" id="col2-count">12 not</span>
+        </div>
+
+        <div class="search-bar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input id="search-input" placeholder="Ara…" oninput="filterNotes(this.value)" />
+        </div>
+
+        <div class="filter-chips">
+          <div class="chip active" onclick="setFilter('all',this)">Tümü</div>
+          <div class="chip" onclick="setFilter('quote',this)">📜 Alıntı</div>
+          <div class="chip" onclick="setFilter('personal',this)">🖊 Kişisel</div>
+          <div class="chip" onclick="setFilter('highlight',this)">✏️ İşaret</div>
+        </div>
+      </div>
+
+      <div id="list-scroll">
+        <div class="group-header">Bugün</div>
+        <div class="note-card active" onclick="selectNote(0)">
+          <div class="note-type-icon nt-personal">🖊</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Güç ve iktidar üzerine düşünceler</div>
+            <div class="note-card-preview">Paul'un içindeki güç istemi aslında babasının gölgesinden kaçma çabası değil mi?</div>
+            <div class="note-card-meta"><span class="tag">#güç</span><span class="tag">#karakter</span><span class="note-date">14:32</span></div>
+          </div>
+        </div>
+
+        <div class="note-card is-quote" onclick="selectNote(1)">
+          <div class="note-type-icon nt-quote">📜</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Herbert — Korku yok edicidir</div>
+            <div class="note-card-preview">"Korku, aklı öldüren küçük ölümdür. Korku, her şeyi silip geçen tam bir yok oluştur."</div>
+            <div class="note-card-meta"><span class="tag">#korku</span><span class="note-date">11:05</span></div>
+          </div>
+        </div>
+
+        <div class="group-header">Bu Hafta</div>
+        <div class="note-card" onclick="selectNote(2)">
+          <div class="note-type-icon nt-highlight">✏️</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Çöl ekosistemi ve Fremen yaşamı</div>
+            <div class="note-card-preview">Arrakis'in su döngüsü, Fremen kültürünün neden bu kadar sıkı kurallara dayandığını açıklıyor.</div>
+            <div class="note-card-meta"><span class="tag">#dünya</span><span class="tag">#fremen</span><span class="note-date">Çar</span></div>
+          </div>
+        </div>
+
+        <div class="note-card is-quote" onclick="selectNote(3)">
+          <div class="note-type-icon nt-quote">📜</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Alıntı — İktidar ve öngörü</div>
+            <div class="note-card-preview">"Gelecek zaman yoktur; yalnızca şimdinin bir geleceğe işaret etme biçimi vardır."</div>
+            <div class="note-card-meta"><span class="tag">#zaman</span><span class="note-date">Sal</span></div>
+          </div>
+        </div>
+
+        <div class="note-card" onclick="selectNote(4)">
+          <div class="note-type-icon nt-personal">🖊</div>
+          <div class="note-card-body">
+            <div class="note-card-title">Mesih mitosu — karşılaştırmalı analiz</div>
+            <div class="note-card-preview">Herbert, kurtarıcı figürünü hem yüceltip hem de yıkıyor. Paul'un trajik dönüşümü tam bu çelişkide saklı.</div>
+            <div class="note-card-meta"><span class="tag">#mit</span><span class="tag">#din</span><span class="note-date">Pzt</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ COL 3: ZEN EDITOR ════ -->
+    <div id="col-editor">
+      <div class="editor-topbar">
+        <div class="breadcrumb">
+          <span>📘 Dune</span>
+          <span class="breadcrumb-sep">›</span>
+          <strong>Güç ve iktidar üzerine düşünceler</strong>
+        </div>
+        <div class="editor-actions">
+          <button class="btn-sm">🔗 Bağla</button>
+          <button class="btn-sm">🏷 Etiket</button>
+        </div>
+      </div>
+
+      <div id="editor-content">
+        <div class="editor-note-type-badge badge-personal">🖊 Kişisel Not</div>
+        <div class="editor-title" contenteditable="true" onblur="autoSave()">Güç ve iktidar üzerine düşünceler</div>
+        <div class="editor-meta-row">
+          <span class="meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>22 Nisan 2026, 14:32</span>
+          <span class="meta-chip">📘 Dune · Sf. 184</span>
+          <span class="meta-chip" style="color:var(--violet)">#güç  #karakter  #paul</span>
+        </div>
+        <div class="editor-body" contenteditable="true" oninput="onEditorInput()" onblur="autoSave()">
+          <p>Paul'un içindeki güç istemi aslında babasının gölgesinden kaçma çabası değil mi? Duke Leto'nun gölgesi altında büyüyen bir çocuğun, sistematik iktidar yapılarını hem reddedip hem de yeniden kurması ilginç bir paradoks.</p>
+          <br>
+          <div class="blockquote-block">"Siyasi iktidar, onu elinde tutanı da hapseder." — F. Herbert</div>
+          <br>
+          <p>Bu düşünce Machiavelli'nin <span style="background: rgba(167,139,250,.2); border-radius: 3px; padding: 1px 3px;">Prens</span>'indeki iktidar etiğiyle örtüşüyor. Güç, onu kullananı da şekillendirir; Paul'un mesih kimliğine bürünmesi bunu mükemmel örnekliyor.</p>
+        </div>
+
+        <div class="backlinks-section">
+          <div class="backlinks-title">↩ Geri Bağlantılar</div>
+          <span class="backlink-chip">📘 Mesih mitosu analizi</span>
+          <span class="backlink-chip">📘 Ekoloji ve siyaset paraleli</span>
+          <span class="backlink-chip">📚 Nietzsche — Güç İstenci notları</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+let isResizing = false;
+
+function startResize(e) {
+  isResizing = true;
+  resizeStartX = e.clientX;
+  resizeStartWidth = document.getElementById('col-list').offsetWidth;
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', stopResize);
+  document.getElementById('resizer').classList.add('dragging');
+}
+
+function onResize(e) {
+  if (!isResizing) return;
+  const delta = e.clientX - resizeStartX;
+  const newWidth = Math.max(280, Math.min(400, resizeStartWidth + delta));
+  document.getElementById('col-list').style.width = newWidth + 'px';
+}
+
+function stopResize() {
+  isResizing = false;
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', stopResize);
+  document.getElementById('resizer').classList.remove('dragging');
+}
+
+function selectBook(idx) {
+  document.querySelectorAll('.recent-book.active, .book-item.active').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.recent-book')[idx] && document.querySelectorAll('.recent-book')[idx].classList.add('active');
+  document.querySelectorAll('.book-item')[idx] && document.querySelectorAll('.book-item')[idx].classList.add('active');
+}
+
+function selectNote(idx) {
+  document.querySelectorAll('.note-card').forEach((el, i) => el.classList.toggle('active', i === idx));
+}
+
+function setFilter(type, el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleCategory(idx, header) {
+  const toggle = header.querySelector('.category-toggle');
+  const content = document.getElementById(`cat-${idx}`);
+  toggle.classList.toggle('open');
+  toggle.classList.toggle('closed');
+  content.classList.toggle('collapsed');
+}
+
+function filterBooks(q) {
+  const search = q.toLowerCase();
+  document.querySelectorAll('.book-item').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = text.includes(search) ? '' : 'none';
+  });
+}
+
+function filterNotes(q) {
+  const search = q.toLowerCase();
+  document.querySelectorAll('.note-card').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(search) ? '' : 'none';
+  });
+}
+
+function globalSearch(q) {
+  console.log('Global arama:', q);
+}
+
+function onEditorInput() {
+  setAutoSaveStatus('saving');
+}
+
+function autoSave() {
+  setAutoSaveStatus('saving');
+  setTimeout(() => setAutoSaveStatus('saved'), 500);
+}
+
+function setAutoSaveStatus(status) {
+  const dot = document.querySelector('.autosave-dot');
+  const text = document.getElementById('autosave-text');
+  if (status === 'saving') {
+    dot.classList.add('saving');
+    text.textContent = 'Kaydediliyor…';
+  } else {
+    dot.classList.remove('saving');
+    text.textContent = 'Kaydedildi';
+  }
+}
+
+// Keyboard shortcut: Cmd+K
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('global-search').focus();
+  }
+});
+
+selectBook(0);
+selectNote(0);
+</script>
+</body>
+</html>
